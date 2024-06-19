@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "ultron-server",
+  "dependencies": [
+    "kangaru",
+    "spdlog",
+    "nlohmann-json",
+    "rxcpp",
+    "benchmark",
+    "boost-asio",
+    "lua",
+    "sol2",
+    "gtest"
+  ],
+  "overrides": [
+    {
+      "name": "boost-asio",
+      "version": "1.83.0"
+    },
+    {
+      "name": "lua",
+      "version": "5.4.6"
+    },
+    {
+      "name": "sol2",
+      "version": "3.3.1"
+    }
+  ]
+}

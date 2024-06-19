@@ -1,0 +1,112 @@
+# common
+.idea
+.cache
+logs/
+# C++ objects and libs
+
+*.yml
+*.log
+*.slo
+*.lo
+*.o
+*.a
+*.la
+*.lai
+*.so
+*.dll
+*.dylib
+
+# vcpkg
+vcpkg_installed
+vcpkg_downloads
+
+# Qt-es
+
+/.qmake.cache
+/.qmake.stash
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+build
+*build-*
+*.qm
+
+# QtCreator
+
+*.autosave
+
+# QtCtreator Qml
+*.qmlproject.user
+*.qmlproject.user.*
+
+# QtCtreator CMake
+CMakeLists.txt.user
+CMakeUserPresets.json
+
+# python
+venv/*
+
+# Created by https://www.gitignore.io/api/snapcraft
+
+### Snapcraft ###
+# Snapcraft
+parts/
+prime/
+stage/
+*.snap
+.snapcraft/
+flameshot*.tar.bz2
+
+.vs/
+.vscode/
+!.vscode/.code-snippets
+build/
+output/
+data/flatpak/.flatpak-builder
+# NVIM
+*~
+packages
+
+# Jetbrains
+.idea/
+.run
+
+# Dependencies
+libraries/*
+!libraries/.gitkeep
+
+# MacOS
+.DS_Store
+
+# End of https://www.gitignore.io/api/snapcraft
+
+#MacOS Crap
+.DS_Store
+
+!.gitkeep
+
+# Docs
+
+!docs/
+!docs/catalog-info.yaml
+!docs/index.md
+!mkdocs.yml
+
+# Python Scripts
+
+scripts/*
+!scripts/*.py
+!scripts/*.txt
+# CMake generated
+**/CMakeCache.txt
+**/CMakeUserPresets.json
+**/CTestTestfile.cmake
+**/CPackConfig.cmake
+**/cmake_install.cmake
+**/install_manifest.txt
+**/compile_commands.json

@@ -1,0 +1,106 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "generator",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "hidden": true
+    },
+    {
+      "name": "cicd",
+      "displayName": "CI/CD",
+      "inherits": "generator",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        },
+        "BUILD_EXAMPLES": "OFF",
+        "BUILD_TESTS": "ON",
+        "BUILD_DOXYGEN": "OFF",
+        "BUILD_BENCHMARK": "OFF",
+        "PROJECT_DEBUG_SOURCES_CONTENTS": "OFF",
+        "VCPKG_INSTALLED_DIR": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_ROOT}/installed"
+        }
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Development",
+      "inherits": "generator",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        },
+        "BUILD_TESTS": "ON",
+        "BUILD_DOXYGEN": "OFF",
+        "BUILD_BENCHMARK": "ON",
+        "PROJECT_DEBUG_SOURCES_CONTENTS": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VCPKG_INSTALLED_DIR": {
+          "type": "FILEPATH",
+          "value": "${sourceDir}/vcpkg_installed"
+        }
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Compiles with debug information",
+      "configuration": "Debug",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Compiles with optimization enabled",
+      "configuration": "Release",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "cicd",
+      "displayName": "CI/CD",
+      "description": "CI/CD build configuration",
+      "configuration": "Release",
+      "configurePreset": "cicd"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default-tests",
+      "hidden": true,
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "debug",
+      "inherits": "default-tests",
+      "configuration": "Debug",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "release",
+      "inherits": "default-tests",
+      "configuration": "Release",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "cicd",
+      "inherits": "default-tests",
+      "configuration": "RelWithDebInfo",
+      "configurePreset": "cicd"
+    }
+  ]
+}
