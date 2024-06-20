@@ -23,7 +23,12 @@ class server : public server_subject {
  public:
   server(uint16_t const port, logger_ptr);
 
-  virtual ~server() { stop(); }
+  virtual ~server() {
+    if (ioc_.stopped())
+      return;
+
+    stop();
+  }
 
  public:
   bool run(run_location::current_location);
