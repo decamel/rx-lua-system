@@ -59,6 +59,7 @@ target_link_libraries(
     spdlog::spdlog
     rxcpp
     ${LUA_LIBRARIES}
+    Ultron::Core
     Ultron::Tcp
     Ultron::Util
 )

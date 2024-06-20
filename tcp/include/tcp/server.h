@@ -7,6 +7,7 @@
 #include <util/types.h>
 
 #include <tcp/location.h>
+#include <tcp/protocol-resolution.h>
 
 namespace asio = boost::asio;
 
@@ -19,6 +20,8 @@ using server_subject = rxcpp::subjects::subject<std::shared_ptr<session>>;
 class server : public server_subject {
  public:
   using this_type = server;
+  using resolution = ProtocolResolution<asio::ip::tcp::socket>;
+  using resolution_ptr = std::shared_ptr<resolution>;
 
  public:
   server(uint16_t const port, logger_ptr);

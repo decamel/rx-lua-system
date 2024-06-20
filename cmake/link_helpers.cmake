@@ -7,8 +7,8 @@ macro (to_executable)
   add_executable(${TARGET_NAME})
 endmacro ()
 
-macro(with_sources SOURCES)
-  target_sources(${TARGET_NAME} ${ARGN} ${SOURCES})
+macro(with_sources)
+  target_sources(${TARGET_NAME} ${ARGV})
 endmacro()
 
 macro (link_gtest) 

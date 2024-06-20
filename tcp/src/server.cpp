@@ -1,5 +1,5 @@
 #include <tcp/server.h>
-#include <tcp/session.h>
+#include <boost/asio/co_spawn.hpp>
 #include <exception>
 #include <sstream>
 
@@ -59,11 +59,10 @@ asio::awaitable<void> server::listen() {
 
       logger_->info("Received new connection {}", ss.str());
 
-      // Create session object
-      auto sn = std::make_shared<session>(std::move(socket));
-
-      // Delegate socket processing to next subscribers
-      get_subscriber().on_next(sn);
+      // Resolve protocol of new socket connection
+      resolution_ptr pr;
+      pr.reset(new resolution(std::move(socket), logger_));
+      asio::co_spawn(ioc_, pr->operator()(), asio::detached);
     }
     catch (std::exception& e) {
     }
