@@ -1,6 +1,7 @@
 #include <util/types.h>
 #include <algorithm>
 #include <boost/asio.hpp>
+#include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/system/detail/error_code.hpp>
@@ -26,6 +27,8 @@ class ProtocolResolution
 
  public:
   awaitable<void> operator()();
+
+  void test(asio::const_buffer const&);
 
   void terminate();
 

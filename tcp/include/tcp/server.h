@@ -6,9 +6,6 @@
 
 #include <util/types.h>
 
-#include <tcp/location.h>
-#include <tcp/protocol-resolution.h>
-
 namespace asio = boost::asio;
 
 namespace ultron { namespace tcp {
@@ -20,8 +17,7 @@ using server_subject = rxcpp::subjects::subject<std::shared_ptr<session>>;
 class server : public server_subject {
  public:
   using this_type = server;
-  using resolution = ProtocolResolution<asio::ip::tcp::socket>;
-  using resolution_ptr = std::shared_ptr<resolution>;
+  using io_t = asio::ip::tcp::socket;
 
  public:
   server(uint16_t const port, logger_ptr);
@@ -34,16 +30,53 @@ class server : public server_subject {
   }
 
  public:
-  bool run(run_location::current_location);
-  bool run(run_location::detached_location);
+  template <typename Protocol,
+            typename Enabled =
+                std::enable_if<std::is_constructible<Protocol, io_t>::value>>
+  bool run() {
+    logger_->info("Starting up the server on port {}",
+                  self_.local_endpoint().port());
+    try {
+      co_spawn(ioc_, [this]() { return listen<Protocol>(); }, asio::detached);
+
+      thread_ = std::thread([this]() { ioc_.run(); });
+    }
+    catch (std::exception& e) {
+      logger_->error("Failed to run server due to: {}", e.what());
+      return false;
+    }
+    return true;
+  }
 
   void stop();
 
-  virtual void on_lost_connection() {}
-
  private:
-  asio::awaitable<void> listen();
-  asio::awaitable<void> dispatch(std::string_view);
+  template <typename Protocol>
+  asio::awaitable<void> listen() {
+
+    using protocol_t = Protocol;
+    using protocol_ptr = std::shared_ptr<protocol_t>;
+
+    while (true) {
+      try {
+        asio::ip::tcp::socket socket =
+            co_await self_.async_accept(asio::use_awaitable);
+
+        // Log new connection acceptance
+        std::stringstream ss;
+        ss << socket.remote_endpoint();
+
+        logger_->info("Received new connection {}", ss.str());
+
+        // Resolve protocol of new socket connection
+        protocol_ptr pr;
+        pr.reset(new protocol_t(std::move(socket), logger_));
+        asio::co_spawn(ioc_, pr->schedule(), asio::detached);
+      }
+      catch (std::exception& e) {
+      }
+    }
+  }
 
  private:
   asio::io_context ioc_;

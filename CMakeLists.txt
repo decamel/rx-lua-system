@@ -46,6 +46,7 @@ include(cmake/link_helpers.cmake)
 # Own libraries
 add_subdirectory(core)
 add_subdirectory(tcp)
+add_subdirectory(adapters)
 add_subdirectory(util)
 
 # Executable
@@ -61,6 +62,7 @@ target_link_libraries(
     ${LUA_LIBRARIES}
     Ultron::Core
     Ultron::Tcp
+    Ultron::Adapters
     Ultron::Util
 )
 

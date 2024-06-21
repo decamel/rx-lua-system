@@ -4,7 +4,6 @@
 #include <cassert>
 #include <cctype>
 #include <csignal>
-#include <cstdint>
 #include <operators/rx-observe_on.hpp>
 #include <sol/optional_implementation.hpp>
 #include <sol/property.hpp>
@@ -22,6 +21,7 @@
 #include <boost/asio.hpp>
 
 #include <tcp/server.h>
+#include <adapters/vnigma-adapter.hpp>
 
 using namespace ultron;
 
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
 
   termsig.async_wait([&server](auto const& e, int sig) { server.stop(); });
 
-  server.run(tcp::run_location::detached);
+  server.run<adapter::das<asio::ip::tcp::socket>>();
   ioc.run();
 
   return 0;

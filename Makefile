@@ -12,6 +12,10 @@ run: build
 	@echo "--------   Running Server   --------"
 	@./build/ultron-server --script=./examples/main.lua
 
+.PHONY: con
+con:
+	nc 127.0.0.1 7000
+
 .PHONY: test
 test: build test-core
 
