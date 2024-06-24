@@ -67,3 +67,14 @@ target_link_libraries(
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${LUA_INCLUDE_DIR})
+
+add_executable(test_thing streaming_threads.cpp)
+target_link_libraries(
+  test_thing
+  PRIVATE
+    Boost::boost
+    spdlog::spdlog
+    ${LUA_LIBRARIES}
+    Ultron::Util
+)
+target_include_directories(test_thing PRIVATE ${LUA_INCLUDE_DIR})

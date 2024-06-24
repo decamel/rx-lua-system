@@ -1,15 +1,6 @@
-#include <spdlog/common.h>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/signal_set.hpp>
 #include <cassert>
 #include <cctype>
 #include <csignal>
-#include <operators/rx-observe_on.hpp>
-#include <sol/optional_implementation.hpp>
-#include <sol/property.hpp>
-#include <sol/raii.hpp>
-#include <sol/table.hpp>
-#include <sol/types.hpp>
 #include <type_traits>
 #define SOL_ALL_SAFETIES_ON 1
 
@@ -74,6 +65,7 @@ int main(int argc, char* argv[]) {
   boost::asio::signal_set termsig(ioc, SIGINT, SIGTERM);
 
   auto logger = spdlog::default_logger();
+  logger->set_pattern("[%=15n] %^[%L]%$ %v");
   logger->set_level(spdlog::level::debug);
 
   // assert(result->valid() && "Lua Script must return table");

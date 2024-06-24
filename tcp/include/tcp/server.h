@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include <rxcpp/rx.hpp>
+#include <sstream>
 #include <thread>
 
 #include <util/types.h>
@@ -67,11 +68,13 @@ class server : public server_subject {
         ss << socket.remote_endpoint();
 
         logger_->info("Received new connection {}", ss.str());
-
-        // Resolve protocol of new socket connection
+        // Create logger for new socket
+        std::string name = ss.str();
+        logger_ptr lp = logger_->clone(name);
+        // Delegate socket processing to specified protocol
         protocol_ptr pr;
-        pr.reset(new protocol_t(std::move(socket), logger_));
-        asio::co_spawn(ioc_, pr->schedule(), asio::detached);
+        pr.reset(new protocol_t(std::move(socket), lp));
+        asio::co_spawn(ioc_, (*pr)(), asio::detached);
       }
       catch (std::exception& e) {
       }
