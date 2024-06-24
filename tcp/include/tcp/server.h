@@ -3,6 +3,7 @@
 #include <memory>
 #include <rxcpp/rx.hpp>
 #include <thread>
+#include <type_traits>
 
 #include <util/types.h>
 
@@ -14,13 +15,20 @@ class session;
 
 using server_subject = rxcpp::subjects::subject<std::shared_ptr<session>>;
 
-class server : public server_subject {
+template <typename Protocol,
+          typename Enabled = std::enable_if<std::is_constructible<
+              Protocol, asio::ip::tcp::socket, logger_ptr>::value>>
+class server {
  public:
+  using protocol_t = std::decay_t<Protocol>;
+  using protocol_ptr = std::shared_ptr<protocol_t>;
   using this_type = server;
   using io_t = asio::ip::tcp::socket;
 
  public:
-  server(uint16_t const port, logger_ptr);
+  server(uint16_t const port, logger_ptr logger) :
+      self_(ioc_, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)),
+      logger_(logger) {}
 
   virtual ~server() {
     if (ioc_.stopped())
@@ -30,14 +38,11 @@ class server : public server_subject {
   }
 
  public:
-  template <typename Protocol,
-            typename Enabled =
-                std::enable_if<std::is_constructible<Protocol, io_t>::value>>
   bool run() {
     logger_->info("Starting up the server on port {}",
                   self_.local_endpoint().port());
     try {
-      co_spawn(ioc_, [this]() { return listen<Protocol>(); }, asio::detached);
+      co_spawn(ioc_, listen(), asio::detached);
 
       thread_ = std::thread([this]() { ioc_.run(); });
     }
@@ -48,14 +53,16 @@ class server : public server_subject {
     return true;
   }
 
-  void stop();
+  void stop() {
+    ioc_.stop();
+    if (thread_.joinable()) {
+      thread_.join();
+    }
+    logger_->warn("Server has been stopped");
+  }
 
  private:
-  template <typename Protocol>
   asio::awaitable<void> listen() {
-
-    using protocol_t = Protocol;
-    using protocol_ptr = std::shared_ptr<protocol_t>;
 
     while (true) {
       try {
@@ -68,12 +75,14 @@ class server : public server_subject {
 
         logger_->info("Received new connection {}", ss.str());
 
-        // Resolve protocol of new socket connection
+        // // Resolve protocol of new socket connection
         protocol_ptr pr;
-        pr.reset(new protocol_t(std::move(socket), logger_));
+        pr.reset(new protocol_t(std::move(socket), logger_->clone(ss.str())));
         asio::co_spawn(ioc_, pr->schedule(), asio::detached);
       }
       catch (std::exception& e) {
+        logger_->error("Server connection acceptance error: {}", e.what());
+        break;
       }
     }
   }
