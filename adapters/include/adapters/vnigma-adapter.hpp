@@ -98,25 +98,45 @@ class das : public std::enable_shared_from_this<das<Io>> {
   void terminate() { io_.close(); }
 
  private:
+  std::size_t flush() {
+    if (seek_offset == 0)
+      return 0;
+
+    auto buf = sb_.data();
+    auto begin = asio::buffers_begin(buf);
+    auto cut_pos = begin + seek_offset;
+
+    std::string data(begin, cut_pos);
+    logger_->info("Received message `{}`", data);
+    return cut_pos - begin;
+  }
+
   void resolve(std::size_t n) {
     if (n == 0)
       return;
+
+    auto right_border = seek_offset + n;
 
     sb_.commit(n);  // move nbytes from the output aka data from socket
                     // to the back of input sequence
 
     auto buf = sb_.data();
 
-    std::istream ss(&sb_);
-    std::string data;
-    ss >> data;
-    logger_->info("Data size is {}", data.size());
+    auto begin = asio::buffers_begin(buf);
+    auto it = asio::buffers_begin(buf);
+    auto end = asio::buffers_end(buf);
 
-    assert(*(std::end(data) - 1) == '\0');
+    while (it != end && seek_offset < right_border) {
+      ++seek_offset;
 
-    // auto begin = asio::buffers_begin(buf);
-    // auto last = begin + n - 1;
-    // auto end = asio::buffers_end(buf);
+      if (*it == '\0') {
+        std::size_t len = flush();
+        sb_.consume(len);
+        seek_offset = 0;
+      }
+
+      ++it;
+    }
     //
     // logger_->info("Received {} bytes; Distance btw its {} bytes", n,
     //               end - begin);
@@ -136,8 +156,6 @@ class das : public std::enable_shared_from_this<das<Io>> {
     //   std::cout << *it << std::endl;
     //   ++it;
     // }
-
-    sb_.consume(n);
 
     //
     // TODO: Resolve issue with iterators
