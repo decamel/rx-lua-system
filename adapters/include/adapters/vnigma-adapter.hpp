@@ -1,25 +1,59 @@
+#include <spdlog/spdlog.h>
 #include <util/asio.h>
 #include <util/types.h>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/buffered_stream.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/read_until.hpp>
+#include <boost/asio/redirect_error.hpp>
+#include <iostream>
+#include <istream>
 #include <memory>
 
 #ifdef USE_NULL_TERMINATOR
 constexpr char das_delimeter = '\0';
 #else
-constexpr char das_delimeter = '\n';
+constexpr char das_delimeter = '\0';
 #endif  // !USE_
 
 #ifndef ULTRON_ADAPTERS_DAS_HPP
 #define ULTRON_ADAPTERS_DAS_HPP
 
-namespace ultron { namespace adapter {
+namespace ultron { namespace adapters {
 
 constexpr std::size_t das_max_buffer_size = 2048;
 
 using namespace coro;
+
+namespace detail {
+
+struct streambuf_message_cutter {
+ public:
+  std::size_t absorb(asio::streambuf& sb_, std::size_t nbytes) {
+    sb_.commit(nbytes);
+
+    auto buf = sb_.data();
+    auto begin = asio::buffers_begin(buf);
+    auto it = asio::buffers_begin(buf);
+    auto end = asio::buffers_end(buf);
+
+    while (it != end) {
+      if ((*it) == '\0') {
+        std::cout << "Gotcha!" << std::endl;
+      }
+      ++it;
+    }
+
+    auto data = std::string(it, end);
+
+    // while (it != end) {
+    //   std::cout << std::string(it, end) << std::endl;
+    //   ++it;
+    // }
+
+    return 0;
+  }
+};
 
 template <typename Io>
 class das : public std::enable_shared_from_this<das<Io>> {
@@ -65,34 +99,63 @@ class das : public std::enable_shared_from_this<das<Io>> {
 
  private:
   void resolve(std::size_t n) {
+    if (n == 0)
+      return;
+
     sb_.commit(n);  // move nbytes from the output aka data from socket
                     // to the back of input sequence
 
     auto buf = sb_.data();
 
-    auto begin = asio::buffers_begin(buf);
-    auto it = begin + seek_offset;
-    auto end = asio::buffers_end(buf);
+    std::istream ss(&sb_);
+    std::string data;
+    ss >> data;
+    logger_->info("Data size is {}", data.size());
 
-    std::string debug(it, end);
-    logger_->info("Will do `{}`", debug);
+    assert(*(std::end(data) - 1) == '\0');
+
+    // auto begin = asio::buffers_begin(buf);
+    // auto last = begin + n - 1;
+    // auto end = asio::buffers_end(buf);
+    //
+    // logger_->info("Received {} bytes; Distance btw its {} bytes", n,
+    //               end - begin);
+    // logger_->info("First symbol is {}", *begin);
+    // logger_->info("Last symbol is {}",
+    //               *it == '\0' ? "null" : std::string({*it}));
+
+    // auto begin = asio::buffers_begin(buf);
+    // auto it = begin + seek_offset;
+    // auto end = begin + seek_offset + n;
+    //
+    // if (*end == '\0') {
+    //   logger_->info("Found message end");
+    // }
+    //
+    // while (it != end) {
+    //   std::cout << *it << std::endl;
+    //   ++it;
+    // }
+
+    sb_.consume(n);
+
     //
     // TODO: Resolve issue with iterators
     //
-    do {
-      if (*it == das_delimeter) {
-        std::string data(begin, it);
-        logger_->info("Received sentence `{}`", data);
-        sb_.consume(it - begin + 1);
-        buf = sb_.data();
-        begin = asio::buffers_begin(buf);
-        it = asio::buffers_begin(buf);
-        end = asio::buffers_end(buf);
-        if (it == end)
-          break;
-      }
-      ++it;
-    } while (it != end);
+    // do {
+    //   if (*it == das_delimeter) {
+    //     std::string data(begin, it);
+    //     logger_->info("Received sentence `{}`", data);
+    //     sb_.consume(it - begin + 1);
+    //     buf = sb_.data();
+    //     begin = asio::buffers_begin(buf);
+    //     it = asio::buffers_begin(buf);
+    //     end = asio::buffers_end(buf);
+    //     if (it == end)
+    //       break;
+    //   }
+    //   ++it;
+    // } while (it != end);
 
     seek_offset = asio::buffers_end(buf) - asio::buffers_begin(buf) - 1;
   }
@@ -114,6 +177,8 @@ class das : public std::enable_shared_from_this<das<Io>> {
   std::size_t seek_offset;
 };
 
-}}  // namespace ultron::adapter
+}  // namespace detail
+
+}}  // namespace ultron::adapters
 
 #endif  // !ULTRON_ADAPTERS_DAS_HPP

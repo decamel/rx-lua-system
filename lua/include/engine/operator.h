@@ -22,34 +22,22 @@ class Operator {
 
  public:
   /// @brief Lua iterested routes binding
-  void set_routes(std::vector<std::string> const& range) noexcept {
-    routes = range;
-  }
+  void set_routes(std::vector<std::string> const& range) noexcept;
 
   /// @brief Lua next handler setter
-  void set_next(std::weak_ptr<sol::protected_function> const& v) noexcept {
-    next_handler = v;
-  }
+  void set_next(std::weak_ptr<sol::protected_function> const& v) noexcept;
 
   /// @brief Lua traffic source binding
-  void set_source(rxcpp::subjects::subject<std::string> ss) noexcept {
-    s = ss.get_observable().subscribe([this](std::string value)
-                                      { on_next(std::move(value)); });
-  }
+  void set_source(rxcpp::subjects::subject<std::string> ss) noexcept;
 
   /// @brief Lua traffic source binding
-  void on_next(std::string value) {
-    if (next_handler.expired())
-      return;
-
-    auto sp = next_handler.lock();
-    sp->call<void>(value);
-  }
+  void on_next(std::string value);
 
  private:
   std::vector<std::string> routes;
   std::weak_ptr<sol::protected_function> next_handler;
   rxcpp::subscription s;
+  std::string name_;
 };
 
 }  // namespace ultron

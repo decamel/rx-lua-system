@@ -12,7 +12,7 @@
 #include <boost/asio.hpp>
 
 #include <tcp/server.h>
-#include <adapters/vnigma-adapter.hpp>
+#include <adapters/adapters.hpp>
 
 #include <util/types.h>
 #include <log/log-action.hpp>
@@ -39,7 +39,7 @@ struct language_member<das_server_tag> {
   template <class Port,
             class Enabled = std::enable_if<std::is_arithmetic<Port>::value>>
   static auto member(Port&& port, logger_ptr logger) {
-    return tcp::server<adapter::das<asio::ip::tcp::socket>>(port, logger);
+    return tcp::server<adapters::tcp::das>(port, logger);
   }
 };
 
