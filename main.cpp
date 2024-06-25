@@ -14,11 +14,16 @@
 #include <tcp/server.h>
 #include <adapters/vnigma-adapter.hpp>
 
+#include <util/types.h>
+#include <log/log-action.hpp>
+
+#include <engine/operator.h>
+
 using namespace ultron;
 
 struct tag {};
 
-struct server_tag {};
+struct das_server_tag {};
 
 template <typename Tag>
 struct language_member {
@@ -30,34 +35,12 @@ struct language_member {
 };
 
 template <>
-struct language_member<server_tag> {
+struct language_member<das_server_tag> {
   template <class Port,
             class Enabled = std::enable_if<std::is_arithmetic<Port>::value>>
   static auto member(Port&& port, logger_ptr logger) {
-    return tcp::server(port, logger);
+    return tcp::server<adapter::das<asio::ip::tcp::socket>>(port, logger);
   }
-};
-
-struct LuaTcpProxy {
-  LuaTcpProxy(tcp::server& s, logger_ptr logger) :
-      server_(s), logger_(logger){};
-
-  ~LuaTcpProxy() { s.unsubscribe(); }
-
- public:
-  sol::function get_next() const { return next_; }
-
-  void set_next(sol::function f) {
-    s.unsubscribe();
-    next_ = f;
-    s = server_.get_observable().subscribe([this](auto const&) { next_(); });
-  }
-
- private:
-  sol::function next_;
-  tcp::server& server_;
-  logger_ptr logger_;
-  rxcpp::subscription s;
 };
 
 int main(int argc, char* argv[]) {
@@ -68,27 +51,19 @@ int main(int argc, char* argv[]) {
   logger->set_pattern("[%=15n] %^[%L]%$ %v");
   logger->set_level(spdlog::level::debug);
 
-  // assert(result->valid() && "Lua Script must return table");
-
-  // std::string name = result.value()["name"];
-  // logger->info("Loaded module with name `{:10s}`", name);
-
-  auto server =
-      language_member<server_tag>{}.member(7000, logger->clone("TCP SERVER"));
-
   sol::state lua;
 
-  sol::table module = lua.create_named_table("Traffic");
-  module.new_usertype<LuaTcpProxy>(
-      "tcp", sol::meta_function::construct,
-      sol::factories([logger, &server]()
-                     { return std::make_shared<LuaTcpProxy>(server, logger); }),
-      "next", sol::property(&LuaTcpProxy::get_next, &LuaTcpProxy::set_next));
+  lua.new_usertype<LoggerProxy>(
+      "Logger", sol::meta_function::construct,
+      sol::factories(
+          [logger](std::string const& name)
+          { return std::make_shared<LoggerProxy>(logger->clone(name)); }),
+      "info", &LoggerProxy::info);
 
   lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::io,
                      sol::lib::table);
 
-  std::string script_path = "./examples/main.lua";
+  std::string script_path = "./main.lua";
   sol::load_result script = lua.load_file(script_path);
 
   if (!script.valid()) {
@@ -97,15 +72,24 @@ int main(int argc, char* argv[]) {
   }
 
   auto result = script();
-  assert(result.status() == sol::call_status::ok);
+  if (result.status() != sol::call_status::ok) {
+    sol::error err = result;
+    logger->error("Failed to run script: {}", err.what());
+    return -1;
+  }
 
-  server.get_observable().subscribe(
-      [logger](std::shared_ptr<tcp::session> sn)
-      { logger->info("Handled propagated connection"); });
+  auto server = language_member<das_server_tag>{}.member(
+      7000, logger->clone("TCP SERVER"));
 
-  termsig.async_wait([&server](auto const& e, int sig) { server.stop(); });
+  termsig.async_wait(
+      [&server, &ioc](auto const& e, int sig)
+      {
+        server.stop();
+        ioc.stop();
+      });
 
-  server.run<adapter::das<asio::ip::tcp::socket>>();
+  server.run();
+
   ioc.run();
 
   return 0;

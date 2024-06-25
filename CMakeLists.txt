@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.22)
 
 cmake_policy(SET CMP0084 NEW)
 
-project(ultron-server VERSION 1.0.0 LANGUAGES CXX)
+project(
+  ultron-server
+  VERSION 1.0.0
+  LANGUAGES CXX)
 
 # C++ Properties
 set(CMAKE_CXX_STANDARD 20)
@@ -16,38 +19,40 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Libraries
 
-# /* -------------------------------------------------------------------------- */
-# /*                           SPDLog logging library                           */
-# /* -------------------------------------------------------------------------- */
+# /* --------------------------------------------------------------------------
+# */ /*                           SPDLog logging library */ /*
+# -------------------------------------------------------------------------- */
 find_package(spdlog CONFIG REQUIRED)
-# /* -------------------------------------------------------------------------- */
-# /*                              ReactiveX library                             */
-# /* -------------------------------------------------------------------------- */
+# /* --------------------------------------------------------------------------
+# */ /*                              ReactiveX library */ /*
+# -------------------------------------------------------------------------- */
 find_package(rxcpp CONFIG REQUIRED)
-# /* -------------------------------------------------------------------------- */
-# /*                                Lua library                                 */
-# /* -------------------------------------------------------------------------- */
+# /* --------------------------------------------------------------------------
+# */ /*                                Lua library */ /*
+# -------------------------------------------------------------------------- */
 find_package(Lua REQUIRED)
-# /* -------------------------------------------------------------------------- */
-# /*                               Boost library                                */
-# /* -------------------------------------------------------------------------- */
+# /* --------------------------------------------------------------------------
+# */ /*                               Boost library */ /*
+# -------------------------------------------------------------------------- */
 find_package(Boost REQUIRED)
-# /* -------------------------------------------------------------------------- */
-# /*                                Json library                                */
-# /* -------------------------------------------------------------------------- */
+# /* --------------------------------------------------------------------------
+# */ /*                                Json library */ /*
+# -------------------------------------------------------------------------- */
 find_package(nlohmann_json CONFIG REQUIRED)
 
 if(BUILD_TESTS)
-    find_package(GTest CONFIG REQUIRED)
+  find_package(GTest CONFIG REQUIRED)
 endif()
 
 include(cmake/link_helpers.cmake)
 
 # Own libraries
+add_subdirectory(util)
 add_subdirectory(core)
 add_subdirectory(tcp)
+add_subdirectory(lua)
+add_subdirectory(actions/log)
 add_subdirectory(adapters)
-add_subdirectory(util)
 
 # Executable
 
@@ -55,16 +60,15 @@ add_executable(${PROJECT_NAME} main.cpp)
 
 target_link_libraries(
   ${PROJECT_NAME}
-  PRIVATE
-    Boost::boost
-    spdlog::spdlog
-    rxcpp
-    ${LUA_LIBRARIES}
-    Ultron::Core
-    Ultron::Tcp
-    Ultron::Adapters
-    Ultron::Util
-)
+  PRIVATE Boost::boost
+          spdlog::spdlog
+          rxcpp
+          ${LUA_LIBRARIES}
+          Ultron::Core
+          Ultron::Tcp
+          Ultron::Lua::Engine
+          Ultron::Adapters
+          Ultron::Actions::Log)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${LUA_INCLUDE_DIR})
 

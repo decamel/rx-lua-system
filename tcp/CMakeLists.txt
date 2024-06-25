@@ -1,11 +1,9 @@
 
-
 add_library(ultrontcp STATIC)
 add_library(Ultron::Tcp ALIAS ultrontcp)
 
 target_sources(ultrontcp
   PRIVATE
-    ./src/server.cpp
     ./src/session.cpp
     ./src/socket-protocol-resolution.cpp
 )
