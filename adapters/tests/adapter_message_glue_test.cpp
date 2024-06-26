@@ -1,5 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <spdlog/common.h>
+#include <spdlog/spdlog.h>
 #include <adapters/adapters.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -11,15 +13,19 @@ class TestDasAdapterGlue : public ::testing::Test {};
 
 TEST_F(TestDasAdapterGlue, test_bufferisation) {
 
-  asio::streambuf sb;
+  auto logger = spdlog::default_logger()->clone("muted");
 
-  std::ostream ss(&sb);
-  ss << "Hello";
+  logger->set_level(spdlog::level::off);
 
-  std::cout << "Current buffer size: " << sb.size()
-            << std::endl;  // will show just 4 bytes instead of 9
+  asio::io_context ioc;
 
-  adapters::detail::streambuf_message_cutter mc{};
+  asio::ip::tcp::socket socket(ioc);
 
-  mc.absorb(sb, 18);
+  adapters::tcp::das adaptee(std::move(socket), logger);
+
+  asio::streambuf writebuf;
+
+  std::ostream ss(&writebuf);
+
+  ss << "<DSSSD,1,1,data\0";
 }

@@ -1,20 +1,9 @@
 #include <spdlog/spdlog.h>
 #include <util/asio.h>
 #include <util/types.h>
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/buffered_stream.hpp>
-#include <boost/asio/buffers_iterator.hpp>
-#include <boost/asio/read_until.hpp>
-#include <boost/asio/redirect_error.hpp>
-#include <iostream>
-#include <istream>
 #include <memory>
 
-#ifdef USE_NULL_TERMINATOR
 constexpr char das_delimeter = '\0';
-#else
-constexpr char das_delimeter = '\0';
-#endif  // !USE_
 
 #ifndef ULTRON_ADAPTERS_DAS_HPP
 #define ULTRON_ADAPTERS_DAS_HPP
@@ -26,34 +15,6 @@ constexpr std::size_t das_max_buffer_size = 2048;
 using namespace coro;
 
 namespace detail {
-
-struct streambuf_message_cutter {
- public:
-  std::size_t absorb(asio::streambuf& sb_, std::size_t nbytes) {
-    sb_.commit(nbytes);
-
-    auto buf = sb_.data();
-    auto begin = asio::buffers_begin(buf);
-    auto it = asio::buffers_begin(buf);
-    auto end = asio::buffers_end(buf);
-
-    while (it != end) {
-      if ((*it) == '\0') {
-        std::cout << "Gotcha!" << std::endl;
-      }
-      ++it;
-    }
-
-    auto data = std::string(it, end);
-
-    // while (it != end) {
-    //   std::cout << std::string(it, end) << std::endl;
-    //   ++it;
-    // }
-
-    return 0;
-  }
-};
 
 template <typename Io>
 class das : public std::enable_shared_from_this<das<Io>> {
@@ -107,7 +68,7 @@ class das : public std::enable_shared_from_this<das<Io>> {
     auto cut_pos = begin + seek_offset;
 
     std::string data(begin, cut_pos);
-    logger_->info("Received message `{}`", data);
+
     return cut_pos - begin;
   }
 
@@ -137,55 +98,6 @@ class das : public std::enable_shared_from_this<das<Io>> {
 
       ++it;
     }
-    //
-    // logger_->info("Received {} bytes; Distance btw its {} bytes", n,
-    //               end - begin);
-    // logger_->info("First symbol is {}", *begin);
-    // logger_->info("Last symbol is {}",
-    //               *it == '\0' ? "null" : std::string({*it}));
-
-    // auto begin = asio::buffers_begin(buf);
-    // auto it = begin + seek_offset;
-    // auto end = begin + seek_offset + n;
-    //
-    // if (*end == '\0') {
-    //   logger_->info("Found message end");
-    // }
-    //
-    // while (it != end) {
-    //   std::cout << *it << std::endl;
-    //   ++it;
-    // }
-
-    //
-    // TODO: Resolve issue with iterators
-    //
-    // do {
-    //   if (*it == das_delimeter) {
-    //     std::string data(begin, it);
-    //     logger_->info("Received sentence `{}`", data);
-    //     sb_.consume(it - begin + 1);
-    //     buf = sb_.data();
-    //     begin = asio::buffers_begin(buf);
-    //     it = asio::buffers_begin(buf);
-    //     end = asio::buffers_end(buf);
-    //     if (it == end)
-    //       break;
-    //   }
-    //   ++it;
-    // } while (it != end);
-
-    seek_offset = asio::buffers_end(buf) - asio::buffers_begin(buf) - 1;
-  }
-
-  std::string escape(char c) {
-    if (c == '\n')
-      return "\\n";
-    if (c == '\r')
-      return "\\r";
-    std::string s;
-    s += c;
-    return s;
   }
 
  private:

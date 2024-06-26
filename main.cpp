@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
   boost::asio::signal_set termsig(ioc, SIGINT, SIGTERM);
 
   auto logger = spdlog::default_logger();
-  logger->set_pattern("[%=15n] %^[%L]%$ %v");
+  logger->set_pattern("[%=20n] %^[%L]%$ %v");
   logger->set_level(spdlog::level::debug);
 
   sol::state lua;

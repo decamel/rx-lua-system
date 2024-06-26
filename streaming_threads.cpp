@@ -1,5 +1,7 @@
 #include <spdlog/spdlog.h>
+#include <unistd.h>
 #include <util/asio.h>
+#include <iostream>
 #include <istream>
 #include <ostream>
 #include <thread>
@@ -21,16 +23,19 @@ int main() {
         logger->info("Started first thread");
         std::ostream os(&ss);
         for (int i; i < 10; i++) {
+          sleep(1);
           os << i;
           logger->info("Sent {}", i);
         }
       });
+
   std::thread th2 = std::thread(
       [&ss, logger]()
       {
         logger->debug("Started second thread");
         std::istream is(&ss);
-        for (int i; i < 10;) {
+        for (int i; i < 10; ++i) {
+          sleep(1);
           is >> i;
           logger->debug("Received {}", i);
         }
@@ -38,6 +43,8 @@ int main() {
 
   th1.join();
   th2.join();
+
+  std::cout << "Flush: " << &ss << std::endl;
 
   return 0;
 }
