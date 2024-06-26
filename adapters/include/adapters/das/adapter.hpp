@@ -1,12 +1,17 @@
+#include <adapters/das/resolution-queue.h>
 #include <spdlog/spdlog.h>
 #include <util/asio.h>
 #include <util/types.h>
+#include <boost/asio/async_result.hpp>
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/streambuf.hpp>
 #include <memory>
+#include "vnigma/message/message_variant.hpp"
+
+#if !defined(ULTRON_ADAPTERS_DAS_HPP)
+#define ULTRON_ADAPTERS_DAS_HPP
 
 constexpr char das_delimeter = '\0';
-
-#ifndef ULTRON_ADAPTERS_DAS_HPP
-#define ULTRON_ADAPTERS_DAS_HPP
 
 namespace ultron { namespace adapters {
 
@@ -18,13 +23,17 @@ namespace detail {
 
 template <typename Io>
 class das : public std::enable_shared_from_this<das<Io>> {
+ public:
+  using this_type = das<Io>;
 
  public:
   das(Io io, logger_ptr logger) :
-      io_(std::move(io)), sb_(das_max_buffer_size), logger_(logger) {}
+      io_(std::move(io)), sb_(das_max_buffer_size), rqueue(), logger_(logger) {}
 
   ~das() { logger_->warn("Destroyed"); }
 
+ private:
+  // ------------------------------ Public interface ------------------------------
  public:
   awaitable<void> operator()() {
     auto self = this->shared_from_this();
@@ -47,10 +56,11 @@ class das : public std::enable_shared_from_this<das<Io>> {
       }
 
       // -------------------------------- Handle bytes --------------------------------
-      resolve(nbytes);
+      auto data = rqueue.resolve(sb_, nbytes);
 
-      std::string debug(asio::buffers_begin(sb_.data()),
-                        asio::buffers_end(sb_.data()));
+      if (data.has_value()) {
+        logger_->info("Received message `{}`", data.value());
+      }
     }
 
     co_return;
@@ -59,52 +69,39 @@ class das : public std::enable_shared_from_this<das<Io>> {
   void terminate() { io_.close(); }
 
  private:
-  std::size_t flush() {
-    if (seek_offset == 0)
-      return 0;
+  struct detect_task {
+    typedef boost::system::error_code error;
+    using handler = void(error);
 
-    auto buf = sb_.data();
-    auto begin = asio::buffers_begin(buf);
-    auto cut_pos = begin + seek_offset;
+    this_type& adapter;
+    logger_ptr logger;
 
-    std::string data(begin, cut_pos);
+    template <typename Self>
+    void operator()(Self& self) {
 
-    return cut_pos - begin;
-  }
+      if (adapter.rqueue.empty())
+        self.compelete();
 
-  void resolve(std::size_t n) {
-    if (n == 0)
-      return;
-
-    auto right_border = seek_offset + n;
-
-    sb_.commit(n);  // move nbytes from the output aka data from socket
-                    // to the back of input sequence
-
-    auto buf = sb_.data();
-
-    auto begin = asio::buffers_begin(buf);
-    auto it = asio::buffers_begin(buf);
-    auto end = asio::buffers_end(buf);
-
-    while (it != end && seek_offset < right_border) {
-      ++seek_offset;
-
-      if (*it == '\0') {
-        std::size_t len = flush();
-        sb_.consume(len);
-        seek_offset = 0;
-      }
-
-      ++it;
+      logger->info("Detection task executed");
+      self.complete();
     }
+  };
+
+  template <
+      asio::completion_token_for<typename detect_task::handler> CompletionToken>
+  auto async_detect(CompletionToken&& token) ->
+      typename asio::async_result<typename std::decay<CompletionToken>::type,
+                                  typename detect_task::handler>::return_type {
+    return asio::async_compose<CompletionToken, void()>(
+        detect_task{*this, logger_}, token);
   }
 
  private:
   Io io_;
   asio::streambuf sb_;
+  adapters::queue::sep_ts_queue rqueue;
   logger_ptr logger_;
-  std::size_t seek_offset;
+  enum { detect, configure, ready } state_ = detect;
 };
 
 }  // namespace detail

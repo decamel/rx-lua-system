@@ -26,7 +26,7 @@ FetchContent_Declare(
   vnigma
   GIT_REPOSITORY
     https://github.com/Communication-and-Radionavigation-SPb/vnigma.git
-  GIT_TAG v0.0.3)
+  GIT_TAG v0.0.4)
 FetchContent_GetProperties(vnigma)
 
 if(NOT vnigma)
